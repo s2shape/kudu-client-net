@@ -13,6 +13,5 @@ publish:
   stage: publish
   script:
     - dotnet build
-    - dotnet publish
     - dotnet nuget push src/Kudu.Client/bin/Debug/*.nupkg -k $NUGET_KEY -s https://www.myget.org/F/s2/api/v2/package
 
