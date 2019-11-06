@@ -250,17 +250,16 @@ namespace Kudu.Client
                 if (_tablet != null)
                 {
                     ScanRequest rpc = GetCloseRequest();
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5))) {
 
-                    try
-                    {
-                        await _client.SendRpcToTabletAsync(rpc, cts.Token)
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        // TODO: Log warning.
-                        Console.WriteLine($"Error closing scanner: {ex}");
+                        try {
+                            await _client.SendRpcToTabletAsync(rpc, cts.Token)
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception ex) {
+                            // TODO: Log warning.
+                            Console.WriteLine($"Error closing scanner: {ex}");
+                        }
                     }
                 }
 
@@ -556,7 +555,7 @@ namespace Kudu.Client
 
             public override void ParseProtobuf(ReadOnlySequence<byte> buffer)
             {
-                var resp = Serializer.Deserialize<ScanResponsePB>(buffer);
+                var resp = Serializer.Deserialize<ScanResponsePB>(buffer.ToStream());
 
                 // TODO: Error handling
 

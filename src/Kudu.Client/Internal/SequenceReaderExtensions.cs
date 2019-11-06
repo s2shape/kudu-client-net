@@ -7,7 +7,7 @@ namespace Kudu.Client.Util
 {
     internal static class SequenceReaderExtensions
     {
-        public static bool TryReadUtf8String(
+        /*public static bool TryReadUtf8String(
             ref this SequenceReader<byte> reader, int length, out string value)
         {
             ReadOnlySpan<byte> span = reader.UnreadSpan;
@@ -38,7 +38,7 @@ namespace Kudu.Client.Util
             value = Encoding.UTF8.GetString(tempSpan);
             reader.Advance(length);
             return true;
-        }
+        }*/
 
         public static bool TryReadVarint(this ref SequenceReader<byte> reader, out int value)
         {

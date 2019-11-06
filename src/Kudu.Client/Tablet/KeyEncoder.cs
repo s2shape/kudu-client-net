@@ -18,15 +18,15 @@ namespace Kudu.Client.Tablet
         {
             var schema = row.Schema;
             int primaryKeyColumnCount = schema.PrimaryKeyColumnCount;
-            using var writer = new BufferWriter(256);
+            using (var writer = new BufferWriter(256)) {
 
-            for (int columnIdx = 0; columnIdx < primaryKeyColumnCount; columnIdx++)
-            {
-                bool isLast = columnIdx + 1 == primaryKeyColumnCount;
-                EncodeColumn(row, columnIdx, isLast, writer);
+                for (int columnIdx = 0; columnIdx < primaryKeyColumnCount; columnIdx++) {
+                    bool isLast = columnIdx + 1 == primaryKeyColumnCount;
+                    EncodeColumn(row, columnIdx, isLast, writer);
+                }
+
+                return writer.Memory.ToArray();
             }
-
-            return writer.Memory.ToArray();
         }
 
         public static void EncodePartitionKey(
@@ -46,11 +46,12 @@ namespace Kudu.Client.Tablet
 
         public static int GetHashBucket(PartialRow row, HashBucketSchema hashSchema)
         {
-            using var writer = new BufferWriter(256);
-            EncodeColumns(row, hashSchema.ColumnIds, writer);
-            var hash = Murmur2.Hash64(writer.Memory.Span, hashSchema.Seed);
-            var bucket = hash % (uint)hashSchema.NumBuckets;
-            return (int)bucket;
+            using (var writer = new BufferWriter(256)) {
+                EncodeColumns(row, hashSchema.ColumnIds, writer);
+                var hash = Murmur2.Hash64(writer.Memory.Span, hashSchema.Seed);
+                var bucket = hash % (uint) hashSchema.NumBuckets;
+                return (int) bucket;
+            }
         }
 
         /// <summary>
@@ -73,9 +74,10 @@ namespace Kudu.Client.Tablet
         public static byte[] EncodeRangePartitionKey(
             PartialRow row, RangeSchema rangeSchema)
         {
-            using var writer = new BufferWriter(256);
-            EncodeColumns(row, rangeSchema.ColumnIds, writer);
-            return writer.Memory.ToArray();
+            using (var writer = new BufferWriter(256)) {
+                EncodeColumns(row, rangeSchema.ColumnIds, writer);
+                return writer.Memory.ToArray();
+            }
         }
 
         private static void EncodeColumns(

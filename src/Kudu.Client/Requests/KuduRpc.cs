@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Kudu.Client.Protocol.Rpc;
 using Kudu.Client.Protocol.Security;
 using Kudu.Client.Tablet;
+using Kudu.Client.Util;
 using ProtoBuf;
 
 namespace Kudu.Client.Requests
@@ -88,7 +89,7 @@ namespace Kudu.Client.Requests
 
         public override void ParseProtobuf(ReadOnlySequence<byte> buffer)
         {
-            Response = Serializer.Deserialize<TResponse>(buffer);
+            Response = Serializer.Deserialize<TResponse>(buffer.ToStream());
         }
     }
 
@@ -120,7 +121,7 @@ namespace Kudu.Client.Requests
 
         public override void ParseProtobuf(ReadOnlySequence<byte> buffer)
         {
-            Response = Serializer.Deserialize<TResponse>(buffer);
+            Response = Serializer.Deserialize<TResponse>(buffer.ToStream());
         }
     }
 }

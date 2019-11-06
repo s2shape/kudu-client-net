@@ -89,13 +89,19 @@ namespace Kudu.Client
             return _connectionCache.DisposeAsync();
         }
 
+        private async ValueTask<HiveMetastoreConfig> ConnectAsync(CancellationToken cancellationToken)
+        {
+            await ConnectToClusterAsync(cancellationToken).ConfigureAwait(false);
+            return _hiveMetastoreConfig;
+        }
+
         /// <summary>
         /// Get the Hive Metastore configuration of the most recently connected-to leader master,
         /// or null if the Hive Metastore integration is not enabled.
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         public ValueTask<HiveMetastoreConfig> GetHiveMetastoreConfigAsync(
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
         {
             if (_hasConnectedToMaster)
             {
@@ -103,12 +109,6 @@ namespace Kudu.Client
             }
 
             return ConnectAsync(cancellationToken);
-
-            async ValueTask<HiveMetastoreConfig> ConnectAsync(CancellationToken cancellationToken)
-            {
-                await ConnectToClusterAsync(cancellationToken).ConfigureAwait(false);
-                return _hiveMetastoreConfig;
-            }
         }
 
         public async Task<KuduTable> CreateTableAsync(TableBuilder table)
@@ -378,13 +378,14 @@ namespace Kudu.Client
             var table = operation.Table;
             var row = operation.Row;
 
-            using var writer = new BufferWriter(256);
-            KeyEncoder.EncodePartitionKey(row, table.PartitionSchema, writer);
-            var partitionKey = writer.Memory.Span;
+            using (var writer = new BufferWriter(256)) {
+                KeyEncoder.EncodePartitionKey(row, table.PartitionSchema, writer);
+                var partitionKey = writer.Memory.Span;
 
-            // Note that we don't have to await this method before disposing the writer, as a
-            // copy of partitionKey will be made if the method cannot complete synchronously.
-            return GetTabletAsync(table.TableId, partitionKey);
+                // Note that we don't have to await this method before disposing the writer, as a
+                // copy of partitionKey will be made if the method cannot complete synchronously.
+                return GetTabletAsync(table.TableId, partitionKey);
+            }
         }
 
         /// <summary>
@@ -482,59 +483,55 @@ namespace Kudu.Client
             var foundMasters = new List<ServerInfo>(masterAddresses.Count);
             int leaderIndex = -1;
 
-            using var cts = new CancellationTokenSource();
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                cts.Token, cancellationToken);
+            using (var cts = new CancellationTokenSource()) {
+                using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                    cts.Token, cancellationToken)) {
 
-            // Attempt to connect to all configured masters in parallel.
-            foreach (var address in masterAddresses)
-            {
-                var task = ConnectToMasterAsync(address, linkedCts.Token);
-                tasks.Add(task);
-            }
-
-            while (tasks.Count > 0)
-            {
-                var task = await Task.WhenAny(tasks).ConfigureAwait(false);
-                tasks.Remove(task);
-
-                if (!TryGetConnectResponse(task,
-                    out ServerInfo serverInfo,
-                    out ConnectToMasterResponsePB responsePb))
-                {
-                    // Failed to connect to this master.
-                    // Failures are fine here, as long as we can
-                    // connect to the leader.
-                    continue;
-                }
-
-                foundMasters.Add(serverInfo);
-
-                if (responsePb.Role == RaftPeerPB.Role.Leader)
-                {
-                    leaderIndex = foundMasters.Count - 1;
-
-                    _location = responsePb.ClientLocation;
-
-                    var hmsConfig = responsePb.HmsConfig;
-                    if (hmsConfig != null)
-                    {
-                        _hiveMetastoreConfig = new HiveMetastoreConfig(
-                            hmsConfig.HmsUris,
-                            hmsConfig.HmsSaslEnabled,
-                            hmsConfig.HmsUuid);
+                    // Attempt to connect to all configured masters in parallel.
+                    foreach (var address in masterAddresses) {
+                        var task = ConnectToMasterAsync(address, linkedCts.Token);
+                        tasks.Add(task);
                     }
 
-                    // Found the leader, that's all we really care about.
-                    // Wait a few more seconds to get any followers.
-                    cts.CancelAfter(TimeSpan.FromSeconds(3));
-                }
-            }
+                    while (tasks.Count > 0) {
+                        var task = await Task.WhenAny(tasks).ConfigureAwait(false);
+                        tasks.Remove(task);
 
-            if (leaderIndex != -1)
-            {
-                _masterCache = new ServerInfoCache(foundMasters, leaderIndex);
-                _hasConnectedToMaster = true;
+                        if (!TryGetConnectResponse(task,
+                            out ServerInfo serverInfo,
+                            out ConnectToMasterResponsePB responsePb)) {
+                            // Failed to connect to this master.
+                            // Failures are fine here, as long as we can
+                            // connect to the leader.
+                            continue;
+                        }
+
+                        foundMasters.Add(serverInfo);
+
+                        if (responsePb.Role == RaftPeerPB.Role.Leader) {
+                            leaderIndex = foundMasters.Count - 1;
+
+                            _location = responsePb.ClientLocation;
+
+                            var hmsConfig = responsePb.HmsConfig;
+                            if (hmsConfig != null) {
+                                _hiveMetastoreConfig = new HiveMetastoreConfig(
+                                    hmsConfig.HmsUris,
+                                    hmsConfig.HmsSaslEnabled,
+                                    hmsConfig.HmsUuid);
+                            }
+
+                            // Found the leader, that's all we really care about.
+                            // Wait a few more seconds to get any followers.
+                            cts.CancelAfter(TimeSpan.FromSeconds(3));
+                        }
+                    }
+
+                    if (leaderIndex != -1) {
+                        _masterCache = new ServerInfoCache(foundMasters, leaderIndex);
+                        _hasConnectedToMaster = true;
+                    }
+                }
             }
         }
 

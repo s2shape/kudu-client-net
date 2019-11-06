@@ -192,31 +192,52 @@ namespace Kudu.Client.Exceptions
         /// </summary>
         private string GetCodeAsstring()
         {
-            return Code switch
-            {
-                AppStatusPB.ErrorCode.Ok => "Ok",
-                AppStatusPB.ErrorCode.NotFound => "Not found",
-                AppStatusPB.ErrorCode.Corruption => "Corruption",
-                AppStatusPB.ErrorCode.NotSupported => "Not implemented",
-                AppStatusPB.ErrorCode.InvalidArgument => "Invalid argument",
-                AppStatusPB.ErrorCode.IoError => "IO error",
-                AppStatusPB.ErrorCode.AlreadyPresent => "Already present",
-                AppStatusPB.ErrorCode.RuntimeError => "Runtime error",
-                AppStatusPB.ErrorCode.NetworkError => "Network error",
-                AppStatusPB.ErrorCode.IllegalState => "Illegal state",
-                AppStatusPB.ErrorCode.NotAuthorized => "Not authorized",
-                AppStatusPB.ErrorCode.Aborted => "Aborted",
-                AppStatusPB.ErrorCode.RemoteError => "Remote error",
-                AppStatusPB.ErrorCode.ServiceUnavailable => "Service unavailable",
-                AppStatusPB.ErrorCode.TimedOut => "Timed out",
-                AppStatusPB.ErrorCode.Uninitialized => "Uninitialized",
-                AppStatusPB.ErrorCode.ConfigurationError => "Configuration error",
-                AppStatusPB.ErrorCode.Incomplete => "Incomplete",
-                AppStatusPB.ErrorCode.EndOfFile => "End of file",
-                AppStatusPB.ErrorCode.Cancelled => "Cancelled",
-                AppStatusPB.ErrorCode.UnknownError => "Unknown",
-                _ => $"Unknown error ({Code})"
-            };
+            switch (Code) {
+                case AppStatusPB.ErrorCode.Ok:
+                    return "Ok";
+                case AppStatusPB.ErrorCode.NotFound:
+                    return "Not found";
+                case AppStatusPB.ErrorCode.Corruption:
+                    return "Corruption";
+                case AppStatusPB.ErrorCode.NotSupported:
+                    return "Not implemented";
+                case AppStatusPB.ErrorCode.InvalidArgument:
+                    return "Invalid argument";
+                case AppStatusPB.ErrorCode.IoError:
+                    return "IO error";
+                case AppStatusPB.ErrorCode.AlreadyPresent:
+                    return "Already present";
+                case AppStatusPB.ErrorCode.RuntimeError:
+                    return "Runtime error";
+                case AppStatusPB.ErrorCode.NetworkError:
+                    return "Network error";
+                case AppStatusPB.ErrorCode.IllegalState:
+                    return "Illegal state";
+                case AppStatusPB.ErrorCode.NotAuthorized:
+                    return "Not authorized";
+                case AppStatusPB.ErrorCode.Aborted:
+                    return "Aborted";
+                case AppStatusPB.ErrorCode.RemoteError:
+                    return "Remote error";
+                case AppStatusPB.ErrorCode.ServiceUnavailable:
+                    return "Service unavailable";
+                case AppStatusPB.ErrorCode.TimedOut:
+                    return "Timed out";
+                case AppStatusPB.ErrorCode.Uninitialized:
+                    return "Uninitialized";
+                case AppStatusPB.ErrorCode.ConfigurationError:
+                    return "Configuration error";
+                case AppStatusPB.ErrorCode.Incomplete:
+                    return "Incomplete";
+                case AppStatusPB.ErrorCode.EndOfFile:
+                    return "End of file";
+                case AppStatusPB.ErrorCode.Cancelled:
+                    return "Cancelled";
+                case AppStatusPB.ErrorCode.UnknownError:
+                    return "Unknown";
+                default:
+                    return $"Unknown error ({Code})";
+            }
         }
 
         public override string ToString()

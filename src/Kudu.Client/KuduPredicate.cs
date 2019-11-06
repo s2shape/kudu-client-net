@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Kudu.Client.Protocol;
 using Kudu.Client.Util;
 
@@ -310,24 +311,37 @@ namespace Kudu.Client
         /// <param name="value">The value.</param>
         private string ValueToString(byte[] value)
         {
-            return Column.Type switch
-            {
-                KuduType.Bool => KuduEncoder.DecodeBool(value).ToString(),
-                KuduType.Int8 => KuduEncoder.DecodeInt8(value).ToString(),
-                KuduType.Int16 => KuduEncoder.DecodeInt16(value).ToString(),
-                KuduType.Int32 => KuduEncoder.DecodeInt32(value).ToString(),
-                KuduType.Int64 => KuduEncoder.DecodeInt64(value).ToString(),
-                KuduType.UnixtimeMicros => KuduEncoder.DecodeDateTime(value).ToString(),
-                KuduType.Float => KuduEncoder.DecodeFloat(value).ToString(),
-                KuduType.Double => KuduEncoder.DecodeDouble(value).ToString(),
-                KuduType.String => $@"""{KuduEncoder.DecodeString(value)}""",
-                KuduType.Binary => BitConverter.ToString(value),
-                KuduType.Decimal32 => DecodeDecimal(value).ToString(),
-                KuduType.Decimal64 => DecodeDecimal(value).ToString(),
-                KuduType.Decimal128 => DecodeDecimal(value).ToString(),
+            switch (Column.Type) {
+                case KuduType.Bool:
+                    return KuduEncoder.DecodeBool(value).ToString();
+                case KuduType.Int8:
+                    return KuduEncoder.DecodeInt8(value).ToString();
+                case KuduType.Int16:
+                    return KuduEncoder.DecodeInt16(value).ToString();
+                case KuduType.Int32:
+                    return KuduEncoder.DecodeInt32(value).ToString();
+                case KuduType.Int64:
+                    return KuduEncoder.DecodeInt64(value).ToString();
+                case KuduType.UnixtimeMicros:
+                    return KuduEncoder.DecodeDateTime(value).ToString();
+                case KuduType.Float:
+                    return KuduEncoder.DecodeFloat(value).ToString();
+                case KuduType.Double:
+                    return KuduEncoder.DecodeDouble(value).ToString();
+                case KuduType.String:
+                    return $@"""{KuduEncoder.DecodeString(value)}""";
+                case KuduType.Binary:
+                    return BitConverter.ToString(value);
+                case KuduType.Decimal32:
+                    return DecodeDecimal(value).ToString();
+                case KuduType.Decimal64:
+                    return DecodeDecimal(value).ToString();
+                case KuduType.Decimal128:
+                    return DecodeDecimal(value).ToString();
 
-                _ => throw new Exception($"Unknown column type {Column.Type}")
-            };
+                default:
+                    throw new Exception($"Unknown column type {Column.Type}");
+            }
         }
 
         private decimal DecodeDecimal(ReadOnlySpan<byte> value)
@@ -352,32 +366,34 @@ namespace Kudu.Client
             // always be converted to either an equality, an IS NOT NULL (filtering only
             // null values), or NONE (filtering all values).
 
-            return op switch
+            switch(op)
             {
-                ComparisonOp.Equal => EqualPredicate(column, value),
+                case ComparisonOp.Equal:
+                    return EqualPredicate(column, value);
 
                 // b > true  -> b NONE
                 // b > false -> b = true
-                ComparisonOp.Greater when value => None(column),
-                ComparisonOp.Greater when !value => EqualPredicate(column, true),
+                case ComparisonOp.Greater:
+                    return value ? None(column) : EqualPredicate(column, true);
 
                 // b >= true  -> b = true
                 // b >= false -> b IS NOT NULL
-                ComparisonOp.GreaterEqual when value => EqualPredicate(column, true),
-                ComparisonOp.GreaterEqual when !value => NewIsNotNullPredicate(column),
+                case ComparisonOp.GreaterEqual:
+                    return value ? EqualPredicate(column, true) : NewIsNotNullPredicate(column);
 
                 // b < true  -> b = false
                 // b < false -> b NONE
-                ComparisonOp.Less when value => EqualPredicate(column, false),
-                ComparisonOp.Less when !value => None(column),
+                case ComparisonOp.Less:
+                    return value ? EqualPredicate(column, false) : None(column);
 
                 // b <= true  -> b IS NOT NULL
                 // b <= false -> b = false
-                ComparisonOp.LessEqual when value => NewIsNotNullPredicate(column),
-                ComparisonOp.LessEqual when !value => EqualPredicate(column, false),
+                case ComparisonOp.LessEqual:
+                    return value ? NewIsNotNullPredicate(column) : EqualPredicate(column, false);
 
-                _ => throw new Exception($"Unknown ComparisonOp {op}")
-            };
+                default:
+                    throw new Exception($"Unknown ComparisonOp {op}");
+            }
         }
 
         /// <summary>
@@ -436,19 +452,23 @@ namespace Kudu.Client
 
             var bytes = GetBinary(column.Type, value);
 
-            return op switch
+            switch(op)
             {
-                ComparisonOp.GreaterEqual when value == minValue => NewIsNotNullPredicate(column),
-                ComparisonOp.GreaterEqual when value == maxValue => EqualPredicate(column, bytes),
-                ComparisonOp.GreaterEqual => new KuduPredicate(PredicateType.Range, column, bytes, null),
+                case ComparisonOp.GreaterEqual:
+                    if (value == minValue) return NewIsNotNullPredicate(column);
+                    else if (value == maxValue) return EqualPredicate(column, bytes);
+                    else return new KuduPredicate(PredicateType.Range, column, bytes, null);
 
-                ComparisonOp.Equal => EqualPredicate(column, bytes),
+                case ComparisonOp.Equal:
+                    return EqualPredicate(column, bytes);
 
-                ComparisonOp.Less when value == minValue => None(column),
-                ComparisonOp.Less => new KuduPredicate(PredicateType.Range, column, null, bytes),
+                case ComparisonOp.Less:
+                    if (value == minValue) return None(column);
+                    else return new KuduPredicate(PredicateType.Range, column, null, bytes);
 
-                _ => throw new Exception($"Unknown ComparisonOp {op}")
-            };
+                default:
+                    throw new Exception($"Unknown ComparisonOp {op}");
+            }
         }
 
         /// <summary>
@@ -662,19 +682,24 @@ namespace Kudu.Client
 
             var bytes = KuduEncoder.EncodeInt128(value);
 
-            return op switch
+            switch(op)
             {
-                ComparisonOp.GreaterEqual when value == minValue => NewIsNotNullPredicate(column),
-                ComparisonOp.GreaterEqual when value == maxValue => EqualPredicate(column, bytes),
-                ComparisonOp.GreaterEqual => new KuduPredicate(PredicateType.Range, column, bytes, null),
+                case ComparisonOp.GreaterEqual:
+                    if (value == minValue) return NewIsNotNullPredicate(column);
+                    else if (value == maxValue) return EqualPredicate(column, bytes);
+                    else return new KuduPredicate(PredicateType.Range, column, bytes, null);
 
-                ComparisonOp.Equal => EqualPredicate(column, bytes),
+                case ComparisonOp.Equal:
+                    return EqualPredicate(column, bytes);
 
-                ComparisonOp.Less when value == minValue => None(column),
-                ComparisonOp.Less => new KuduPredicate(PredicateType.Range, column, null, bytes),
+                case ComparisonOp.Less:
+                    return (value == minValue)
+                        ? None(column)
+                        : new KuduPredicate(PredicateType.Range, column, null, bytes);
 
-                _ => throw new Exception($"Unknown ComparisonOp {op}")
-            };
+                default:
+                    throw new Exception($"Unknown ComparisonOp {op}");
+            }
         }
 
         /// <summary>
@@ -726,17 +751,22 @@ namespace Kudu.Client
                 op = ComparisonOp.GreaterEqual;
             }
 
-            return op switch
+            switch(op)
             {
-                ComparisonOp.GreaterEqual when value.Length == 0 => NewIsNotNullPredicate(column),
-                ComparisonOp.GreaterEqual => new KuduPredicate(PredicateType.Range, column, value, null),
+                case ComparisonOp.GreaterEqual:
+                    if (value.Length == 0) return NewIsNotNullPredicate(column);
+                    else return new KuduPredicate(PredicateType.Range, column, value, null);
 
-                ComparisonOp.Equal => EqualPredicate(column, value),
+                case ComparisonOp.Equal:
+                    return EqualPredicate(column, value);
 
-                ComparisonOp.Less when value.Length == 0 => None(column),
-                ComparisonOp.Less => new KuduPredicate(PredicateType.Range, column, null, value),
+                case ComparisonOp.Less:
+                    return (value.Length == 0)
+                        ? None(column)
+                        : new KuduPredicate(PredicateType.Range, column, null, value);
 
-                _ => throw new Exception($"Unknown ComparisonOp {op}")
+                default:
+                    throw new Exception($"Unknown ComparisonOp {op}");
             };
         }
 
@@ -777,91 +807,131 @@ namespace Kudu.Client
             return new KuduPredicate(PredicateType.IsNull, column, null, null);
         }
 
-        public static KuduPredicate NewInListPredicate<T>(
-            ColumnSchema column, IEnumerable<T> values)
+        private static SortedSet<byte[]> GetZ<K>(ColumnSchema column, IEnumerable<K> setx, Func<K, byte[]> conv)
         {
-            var encoded = values switch
+            // TODO: Avoid closure
+            var comparer = new PredicateComparer(column);
+            var values = new SortedSet<byte[]>(comparer);
+            var result = new SortedSet<byte[]>(comparer);
+            foreach (var i in setx)
             {
-                // TODO: byte
-                IEnumerable<bool> x => GetZ(x, KuduEncoder.EncodeBool),
-                IEnumerable<sbyte> x => GetZ(x, KuduEncoder.EncodeInt8),
-                IEnumerable<short> x => GetZ(x, KuduEncoder.EncodeInt16),
-                IEnumerable<int> x => GetZ(x, KuduEncoder.EncodeInt32),
-                IEnumerable<long> x => GetZ(x, KuduEncoder.EncodeInt64),
-                IEnumerable<float> x => GetZ(x, KuduEncoder.EncodeFloat),
-                IEnumerable<double> x => GetZ(x, KuduEncoder.EncodeDouble),
-                IEnumerable<string> x => GetZ(x, KuduEncoder.EncodeString),
-                IEnumerable<byte[]> x => GetZ(x, y => y),
-                IEnumerable<decimal> x when column.Type == KuduType.Decimal32 =>
-                GetZ(x, i => KuduEncoder.EncodeDecimal32(
-                    i, column.TypeAttributes.Precision, column.TypeAttributes.Scale)),
-                IEnumerable<decimal> x when column.Type == KuduType.Decimal64 =>
-                GetZ(x, i => KuduEncoder.EncodeDecimal64(
-                    i, column.TypeAttributes.Precision, column.TypeAttributes.Scale)),
-                IEnumerable<decimal> x when column.Type == KuduType.Decimal128 =>
-                GetZ(x, i => KuduEncoder.EncodeDecimal128(
-                    i, column.TypeAttributes.Precision, column.TypeAttributes.Scale)),
-
-                _ => throw new Exception()
-            };
-
-            return BuildInList(column, encoded);
-
-            SortedSet<byte[]> GetZ<K>(IEnumerable<K> setx, Func<K, byte[]> conv)
-            {
-                // TODO: Avoid closure
-                var comparer = new PredicateComparer(column);
-                var values = new SortedSet<byte[]>(comparer);
-                var result = new SortedSet<byte[]>(comparer);
-                foreach (var i in setx)
-                {
-                    var bytes = conv(i);
-                    result.Add(bytes);
-                }
-
-                return result;
+                var bytes = conv(i);
+                result.Add(bytes);
             }
+
+            return result;
+        }
+
+        public static KuduPredicate NewInListPredicate<T>(
+            ColumnSchema column, IEnumerable<T> values) {
+
+            SortedSet<byte[]> z;
+
+            switch (values) {
+                case IEnumerable<bool> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeBool);
+                    break;
+                case IEnumerable<sbyte> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeInt8);
+                    break;
+                case IEnumerable<short> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeInt16);
+                    break;
+                case IEnumerable<int> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeInt32);
+                    break;
+                case IEnumerable<long> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeInt64);
+                    break;
+                case IEnumerable<float> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeFloat);
+                    break;
+                case IEnumerable<double> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeDouble);
+                    break;
+                case IEnumerable<string> x:
+                    z = GetZ(column, x, KuduEncoder.EncodeString);
+                    break;
+                case IEnumerable<byte[]> x:
+                    z = GetZ(column, x, y => y);
+                    break;
+                case IEnumerable<decimal> x:
+                    if (column.Type == KuduType.Decimal32)
+                        z = GetZ(column, x, i => KuduEncoder.EncodeDecimal32(
+                            i, column.TypeAttributes.Precision, column.TypeAttributes.Scale));
+                    else if (column.Type == KuduType.Decimal64)
+                        z = GetZ(column, x, i => KuduEncoder.EncodeDecimal64(
+                            i, column.TypeAttributes.Precision, column.TypeAttributes.Scale));
+                    else if (column.Type == KuduType.Decimal128)
+                        z = GetZ(column, x, i => KuduEncoder.EncodeDecimal128(
+                            i, column.TypeAttributes.Precision, column.TypeAttributes.Scale));
+                    else throw new Exception();
+                    break;
+                default:
+                    throw new Exception();
+            }
+
+            return BuildInList(column, z);
         }
 
         private static long MinIntValue(KuduType type)
         {
-            return type switch
+            switch(type)
             {
-                KuduType.Int8 => sbyte.MinValue,
-                KuduType.Int16 => short.MinValue,
-                KuduType.Int32 => int.MinValue,
-                KuduType.Int64 => long.MinValue,
-                KuduType.UnixtimeMicros => long.MinValue,
-                _ => throw new Exception()
+                case KuduType.Int8:
+                    return sbyte.MinValue;
+                case KuduType.Int16:
+                    return short.MinValue;
+                case KuduType.Int32:
+                    return int.MinValue;
+                case KuduType.Int64:
+                    return long.MinValue;
+                case KuduType.UnixtimeMicros:
+                    return long.MinValue;
+                default:
+                    throw new Exception();
             };
         }
 
         private static long MaxIntValue(KuduType type)
         {
-            return type switch
+            switch(type)
             {
-                KuduType.Int8 => sbyte.MaxValue,
-                KuduType.Int16 => short.MaxValue,
-                KuduType.Int32 => int.MaxValue,
-                KuduType.Int64 => long.MaxValue,
-                KuduType.UnixtimeMicros => long.MaxValue,
-                _ => throw new Exception()
-            };
+                case KuduType.Int8:
+                    return sbyte.MaxValue;
+                case KuduType.Int16:
+                    return short.MaxValue;
+                case KuduType.Int32:
+                    return int.MaxValue;
+                case KuduType.Int64:
+                    return long.MaxValue;
+                case KuduType.UnixtimeMicros:
+                    return long.MaxValue;
+                default:
+                    throw new Exception();
+            }
         }
 
         private static byte[] GetBinary(KuduType type, long value)
         {
-            return type switch
-            {
-                KuduType.Int8 => KuduEncoder.EncodeInt8((sbyte)value),
-                KuduType.Int16 => KuduEncoder.EncodeInt16((short)value),
-                KuduType.Int32 => KuduEncoder.EncodeInt32((int)value),
-                KuduType.Decimal32 => KuduEncoder.EncodeInt32((int)value),
-                KuduType.Int64 => KuduEncoder.EncodeInt64(value),
-                KuduType.UnixtimeMicros => KuduEncoder.EncodeInt64(value),
-                KuduType.Decimal64 => KuduEncoder.EncodeInt64(value),
-                _ => throw new Exception()
-            };
+            switch (type) {
+                case KuduType.Int8:
+                    return KuduEncoder.EncodeInt8((sbyte) value);
+                case KuduType.Int16:
+                    return KuduEncoder.EncodeInt16((short) value);
+                case KuduType.Int32:
+                    return KuduEncoder.EncodeInt32((int) value);
+                case KuduType.Decimal32:
+                    return KuduEncoder.EncodeInt32((int) value);
+                case KuduType.Int64:
+                    return KuduEncoder.EncodeInt64(value);
+                case KuduType.UnixtimeMicros:
+                    return KuduEncoder.EncodeInt64(value);
+                case KuduType.Decimal64:
+                    return KuduEncoder.EncodeInt64(value);
+                default:
+                    throw new Exception();
+            }
         }
 
         /// <summary>
@@ -988,12 +1058,14 @@ namespace Kudu.Client
                 return NewIsNotNullPredicate(column);
             }
 
-            return numPredicates switch
-            {
-                0 => None(column),
-                1 => EqualPredicate(column, values.Min),
-                _ => new KuduPredicate(column, values)
-            };
+            switch (numPredicates) {
+                case 0:
+                    return None(column);
+                case 1:
+                    return EqualPredicate(column, values.Min);
+                default:
+                    return new KuduPredicate(column, values);
+            }
         }
 
         /// <summary>

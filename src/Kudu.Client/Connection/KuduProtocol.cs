@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.IO;
 using Kudu.Client.Exceptions;
 using Kudu.Client.Protocol.Rpc;
 using Kudu.Client.Util;
@@ -89,10 +90,8 @@ namespace Kudu.Client.Connection
             return false;
         }
 
-        public static ErrorStatusPB GetRpcError(ParserContext parserContext)
-        {
-            var buffer = parserContext.MainProtobufMessage;
-            var error = Serializer.Deserialize<ErrorStatusPB>(buffer);
+        public static ErrorStatusPB GetRpcError(ParserContext parserContext) {
+            var error = Serializer.Deserialize<ErrorStatusPB>(parserContext.MainProtobufMessage.ToStream());
             return error;
         }
 
@@ -106,7 +105,7 @@ namespace Kudu.Client.Connection
             }
 
             var slice = reader.Sequence.Slice(reader.Position, length);
-            header = Serializer.Deserialize<ResponseHeader>(slice);
+            header = Serializer.Deserialize<ResponseHeader>(slice.ToStream());
 
             reader.Advance(length);
 

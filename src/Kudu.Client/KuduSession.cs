@@ -153,17 +153,18 @@ namespace Kudu.Client
 
                 queue.Add(operation);
 
-                using var timeout = new CancellationTokenSource(_options.FlushInterval);
-                using var both = CancellationTokenSource.CreateLinkedTokenSource(
-                    timeout.Token, flushToken);
-                CancellationToken cancellationToken = both.Token;
+                using (var timeout = new CancellationTokenSource(_options.FlushInterval)) {
+                    using (var both = CancellationTokenSource.CreateLinkedTokenSource(
+                        timeout.Token, flushToken)) {
+                        CancellationToken cancellationToken = both.Token;
 
-                while (queue.Count < capacity)
-                {
-                    operation = await reader.ReadAsync(cancellationToken)
-                        .ConfigureAwait(false);
+                        while (queue.Count < capacity) {
+                            operation = await reader.ReadAsync(cancellationToken)
+                                .ConfigureAwait(false);
 
-                    queue.Add(operation);
+                            queue.Add(operation);
+                        }
+                    }
                 }
             }
             catch (OperationCanceledException) { }

@@ -69,12 +69,15 @@ namespace Kudu.Client.Connection
         /// <param name="location">The location of the client.</param>
         public ServerInfo GetServerInfo(ReplicaSelection replicaSelection, string location = null)
         {
-            return replicaSelection switch
+            switch(replicaSelection)
             {
-                ReplicaSelection.LeaderOnly => GetLeaderServerInfo(),
-                ReplicaSelection.ClosestReplica => GetClosestServerInfo(location),
-                _ => throw new NotSupportedException($"Unknown replica selection {replicaSelection}"),
-            };
+                case ReplicaSelection.LeaderOnly:
+                    return GetLeaderServerInfo();
+                case ReplicaSelection.ClosestReplica:
+                    return GetClosestServerInfo(location);
+                default:
+                    throw new NotSupportedException($"Unknown replica selection {replicaSelection}");
+            }
         }
     }
 }

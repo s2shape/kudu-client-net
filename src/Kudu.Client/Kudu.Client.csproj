@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netcoreapp2.1</TargetFrameworks>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>7.3</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>CS1591</NoWarn>
 
@@ -11,7 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Pipelines.Sockets.Unofficial" Version="2.1.0" />
-    <PackageReference Include="protobuf-net" Version="3.0.0-alpha.103" />
+    <PackageReference Include="protobuf-net" Version="2.4.4" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.6.0" />
     <PackageReference Include="System.IO.Pipelines" Version="4.6.0" />
   </ItemGroup>
 
